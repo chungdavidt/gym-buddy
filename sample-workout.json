@@ -291,6 +291,7 @@
 
   "state": {
     "lastSessionDate": null,
-    "nextCycleDay": "push"
+    "nextCycleDay": "push",
+    "inProgressSessionId": null
   }
 }

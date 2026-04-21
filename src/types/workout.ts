@@ -47,11 +47,17 @@ export interface Settings {
   gistId: string | null;
 }
 
+export type SessionStatus = 'in-progress' | 'complete';
+
+export type SessionTag = 'too_heavy' | 'too_easy';
+
 export interface SessionSet {
   exerciseId: string;
+  routineEntryIndex: number;
+  setNumber: number;
   target: { weight: number | null; reps: number };
   actual: { weight: number | null; reps: number };
-  tag?: 'too_heavy' | 'too_easy' | string;
+  tag?: SessionTag;
 }
 
 export interface Session {
@@ -59,12 +65,16 @@ export interface Session {
   date: string;
   cycleDay: CycleDay;
   variant: Variant;
+  status: SessionStatus;
+  startedAt: string;
+  completedAt: string | null;
   sets: SessionSet[];
 }
 
 export interface State {
   lastSessionDate: string | null;
   nextCycleDay: CycleDay;
+  inProgressSessionId: string | null;
 }
 
 export interface WorkoutData {

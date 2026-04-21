@@ -1,19 +1,43 @@
-import type { Exercise, RoutineEntry, Units } from '../types/workout';
+import { useMemo } from 'react';
+import type {
+  CycleDay,
+  Exercise,
+  RoutineEntry,
+  Session,
+  Units,
+  Variant,
+} from '../types/workout';
+import { formatRepRange } from '../utils/format';
+import { prescribeForEntry } from '../utils/progression';
 
 interface Props {
   exercise: Exercise;
   entry: RoutineEntry;
   units: Units;
+  sessions: readonly Session[];
+  cycleDay: CycleDay;
+  variant: Variant;
 }
 
-export default function ExerciseCard({ exercise, entry, units }: Props) {
-  const [low, high] = entry.repRange;
-  const repText = low === high ? `${low} reps` : `${low}-${high} reps`;
+export default function ExerciseCard({
+  exercise,
+  entry,
+  units,
+  sessions,
+  cycleDay,
+  variant,
+}: Props) {
+  const repText = formatRepRange(entry.repRange);
+
+  const prescription = useMemo(
+    () => prescribeForEntry(entry, exercise, sessions, cycleDay, variant),
+    [entry, exercise, sessions, cycleDay, variant],
+  );
 
   const loadText =
     exercise.type === 'weighted'
-      ? entry.startingWeight != null
-        ? `@ ${entry.startingWeight} ${units}`
+      ? prescription.weight != null
+        ? `@ ${prescription.weight} ${units}`
         : '(weight TBD)'
       : '(bodyweight)';
 
