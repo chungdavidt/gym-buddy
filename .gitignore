@@ -25,3 +25,7 @@ dist-ssr
 
 # Claude Code local settings (per-user, not shared)
 .claude/settings.local.json
+
+# Personal notes / design docs — kept local, not shared
+CLAUDE.md
+PLAN.md
