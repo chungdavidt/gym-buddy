@@ -8,6 +8,7 @@ import type {
   Session,
   SessionSet,
   SessionTag,
+  Settings,
   Variant,
   WorkoutData,
 } from '../types/workout';
@@ -29,7 +30,9 @@ export type SessionAction =
       tag: SessionTag | undefined;
     }
   | { type: 'FINISH_SESSION' }
-  | { type: 'CANCEL_SESSION' };
+  | { type: 'CANCEL_SESSION' }
+  | { type: 'UPDATE_SETTINGS'; patch: Partial<Settings> }
+  | { type: 'IMPORT_WORKOUT'; data: WorkoutData };
 
 const NEXT_CYCLE: Record<CycleDay, CycleDay> = {
   push: 'pull',
@@ -183,7 +186,76 @@ function reducer(state: WorkoutData, action: SessionAction): WorkoutData {
         state: { ...state.state, inProgressSessionId: null },
       };
     }
+
+    case 'UPDATE_SETTINGS': {
+      return {
+        ...state,
+        settings: { ...state.settings, ...action.patch },
+      };
+    }
+
+    case 'IMPORT_WORKOUT': {
+      return action.data;
+    }
   }
+}
+
+type ParseResult =
+  | { ok: true; data: WorkoutData }
+  | { ok: false; error: string };
+
+const REQUIRED_KEYS: Array<keyof WorkoutData> = [
+  'version',
+  'settings',
+  'exercises',
+  'routine',
+  'sessions',
+  'state',
+];
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function parseWorkoutJSON(raw: string): ParseResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: 'Invalid JSON' };
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { ok: false, error: 'Expected a JSON object' };
+  }
+
+  const obj = parsed as Record<string, unknown>;
+  for (const key of REQUIRED_KEYS) {
+    if (!(key in obj)) {
+      return { ok: false, error: `Missing required field: ${key}` };
+    }
+  }
+
+  if (typeof obj.version !== 'number') {
+    return { ok: false, error: 'Field "version" must be a number' };
+  }
+  if (obj.version !== 1) {
+    return { ok: false, error: 'Unsupported version' };
+  }
+  if (!obj.settings || typeof obj.settings !== 'object') {
+    return { ok: false, error: 'Field "settings" must be an object' };
+  }
+  if (!Array.isArray(obj.exercises)) {
+    return { ok: false, error: 'Field "exercises" must be an array' };
+  }
+  if (!obj.routine || typeof obj.routine !== 'object') {
+    return { ok: false, error: 'Field "routine" must be an object' };
+  }
+  if (!Array.isArray(obj.sessions)) {
+    return { ok: false, error: 'Field "sessions" must be an array' };
+  }
+  if (!obj.state || typeof obj.state !== 'object') {
+    return { ok: false, error: 'Field "state" must be an object' };
+  }
+
+  return { ok: true, data: obj as unknown as WorkoutData };
 }
 
 interface ContextValue {
