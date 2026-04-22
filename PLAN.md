@@ -1,6 +1,6 @@
 # Gym Buddy — Design Plan
 
-*Living document. Add to this as decisions evolve. Last updated: 2026-04-19.*
+*Living document. Add to this as decisions evolve. Last updated: 2026-04-22.*
 
 ---
 
@@ -196,6 +196,44 @@ Manual JSON export/import button in Settings for weekly emails-to-self or iCloud
 
 ---
 
+## Sharing with friends / onboarding — NOT YET DECIDED
+
+Once the app is on GitHub Pages it's at a public URL, so sharing the *app itself* is free — any friend can open `https://chungdavidt.github.io/gym-buddy/`, Add to Home Screen, and use the full local experience (logging, progression, timer). The hard part is cloud backup: right now that requires each friend to create a GitHub account, generate a **classic** Personal Access Token with `gist` scope, and paste it into Settings. That's fine for 2-3 technical gym buddies. It's a wall for everyone else.
+
+The question: is it worth making this easier, and if so, how?
+
+### Options discussed (ranked by effort)
+
+**A. Friend-facing guide only.** A `SHARE.md` or in-app modal with screenshots of the PAT flow. ~1 hour. Doesn't remove friction, just documents it. Acceptable if the audience is 2-3 people who won't bounce.
+
+**B. Deep-link to pre-filled token creation page.** Button in Settings that opens `https://github.com/settings/tokens/new?scopes=gist&description=Gym%20Buddy` — GitHub pre-checks the scope and fills the description. User clicks Generate, copies, pastes back. ~10 min of code. Very high bang-for-buck; probably worth doing regardless of which direction we take.
+
+**C. GitHub Device Flow OAuth.** The right answer if we actually want non-technical friends onboarding. Friend taps "Sign in with GitHub" → app shows a short code like `WDJB-MJHT` → friend goes to `github.com/login/device`, enters the code, approves. App polls in the background, receives an access token, stores it. **No backend required** — Device Flow was designed for apps with no place to keep a client secret. Requires a one-time GitHub App registration on our end; client ID is public (ships in the bundle, fine). Token shape is functionally identical to a PAT for Gist API calls. Estimated effort: ~100-150 LOC + new `useGithubAuth` hook mirroring `useGistSync`'s shape + a "waiting for code…" Settings state + token-expiry handling. Afternoon of work.
+
+**D. Swap Gists for a real backend** (Firebase / Supabase / Cloudflare Workers + D1). Unlocks real multi-user + real auth, but violates design principle #1 — a maintained cloud service is a 5-year liability that gists-as-git-repos are not. Don't do this unless Gists hit a wall we haven't hit.
+
+### Where this likely lands
+
+- **B is free** and should happen next time we touch Settings, even if the audience stays at "just David." Saves typing.
+- **C is the real answer** if we ever want to throw the URL in a group chat and expect casual uptake. It's more boring than PAT-paste from a standards perspective (OAuth Device Flow is the textbook pattern for no-backend apps), just more code.
+- **A** alone is fine for a private-to-3-friends release.
+
+### Decision criteria
+
+Revisit this when:
+- We actually want to share beyond 1-2 technical friends, OR
+- PAT-paste friction causes someone to bail on using the app, OR
+- We find ourselves manually walking friends through the token dance more than once.
+
+Until then, this section is a parking lot for the idea. No code changes warranted yet.
+
+### What's NOT on the table
+
+- **Shared-gist multi-writer.** Two friends writing to the same gist = last-write-wins data loss. Gists aren't designed for concurrent writers; would need a real backend with CRDTs or a merge UX. Not worth the complexity for a personal app.
+- **Public fork-and-self-host pitch.** Repo is private; for friends to fork, we'd flip the repo to public first (scrub commit history for anything personal). Separate conversation if it comes up.
+
+---
+
 ## Deferred (not in v1)
 
 - **Running.** Different data shape (distance, pace, duration). Will add later as a separate session type via discriminated union on `session.type`.
@@ -234,3 +272,4 @@ Manual JSON export/import button in Settings for weekly emails-to-self or iCloud
 
 - **2026-04-19** — Initial plan drafted. Tech stack, design principles, PPL rotation model, double progression, 4 screens, in-workout UX, data model sketch, backup strategy, deferred items, open questions.
 - **2026-04-22** — Added "Built to be used, not a side project" as design principle #1. Intent: decisions are made for 5-year maintainability, not experimentation.
+- **2026-04-22** — Added "Sharing with friends / onboarding" section. Captured four options (friend-facing guide / deep-link token creation / Device Flow OAuth / backend swap) for making cloud-backup onboarding easier for non-technical friends. No decision yet; parked until there's actual demand beyond 1-2 technical users. Option B (deep-link) flagged as a cheap next-Settings-touch improvement regardless of direction.
