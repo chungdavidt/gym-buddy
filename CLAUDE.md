@@ -1,6 +1,6 @@
 # Gym Buddy — Personal workout tracker (PWA, mobile-first)
 
-A personal workout app for David. Primary device: iPhone Safari. Tells him what to lift today, lets him log it with minimal taps, shows progress over time. Currently at the end of **Phase 4b**: GitHub Gist sync is wired up — auto-push on `FINISH_SESSION`, manual Push/Pull buttons in Settings, last-write-wins, no auto-pull on boot.
+A personal workout app for David. Primary device: iPhone Safari. Tells him what to lift today, lets him log it with minimal taps, shows progress over time. Currently at the end of **Phase 4c**: ships as an installable PWA via GitHub Pages. Home-screen icon opens fullscreen Safari, bundle is precached by a service worker, URL is `https://chungdavidt.github.io/gym-buddy/`. GitHub Actions builds + deploys on every push to `main`.
 
 ## Project state
 
@@ -9,9 +9,10 @@ A personal workout app for David. Primary device: iPhone Safari. Tells him what 
 - **Phase 3 (done, uncommitted)**: Double-progression. Pure util `prescribeForEntry(entry, exercise, sessions, cycleDay, variant)` → `{ weight, repsPerSet, bumped }`. Both card components call the util via `useMemo`; `TodayScreen` threads the per-set prescription into `LOG_SET` so each `SessionSet.target` records what was shown. Reducer falls back to the util if no target is passed. Weighted: hit top on every working-weight set → `weight + weightIncrement`, reset reps to bottom of range; else hold and prefill reps from last actuals. Bodyweight: hit top → aim for top on every set; else prefill from last actuals. `too_heavy` / `too_easy` still captured but ignored by prescription (Phase 3.5).
 - **Phase 4a (done, uncommitted)**: Real Settings screen. Two new reducer actions — `UPDATE_SETTINGS { patch: Partial<Settings> }` (immediate writes, no Save button) and `IMPORT_WORKOUT { data: WorkoutData }` (wholesale replace). New pure helper `parseWorkoutJSON(raw)` validates JSON + top-level shape + `version === 1`. New `src/utils/download.ts` one-shot Blob → anchor download. `SettingsScreen` exposes six sections: Units (`lb`/`kg` segmented), Default rest (`[−15] [+15]` stepper, 30–300s), Cloud backup preview (Gist token + Gist ID, stored but unused), Manual backup (Export button + Import textarea + Apply, with local error surface), Danger zone (Clear all data → `clearWorkout()` + `location.reload()`, behind `window.confirm`), and About (version / last session date / completed count).
 - **Phase 4b (done, uncommitted)**: GitHub Gist sync. New pure `src/data/gistSync.ts` wraps `fetch` against `api.github.com/gists` — `createGist` / `updateGist` / `readGist`, each returns `{ ok: true; value } | { ok: false; error }`. New `src/hooks/useGistSync.tsx` context (wrapped between `SessionProvider` and `RestTimerProvider` in `App.tsx`) owns `status | lastSyncedAt | lastError`, auto-pushes on `workout.state.lastSessionDate` transitions (dedupe via `lastPushedRef` persisted to `localStorage['gym-buddy:sync:lastPushedSessionDate']`), exposes `pushNow()` + `pullNow()`. Settings Cloud-backup section now renders a status line + Push/Pull buttons (Pull gated by `window.confirm`). Conflict policy is last-write-wins; no auto-pull on boot. No new npm deps — native `fetch` + GitHub REST API.
-- **Phase 4c+ (not started)**: History screen, Progress charts, PWA manifest + service worker, deployment.
+- **Phase 4c (done, uncommitted)**: GitHub Pages deployment + PWA. Four threads wired together: (1) `.github/workflows/deploy.yml` — Node 22 runner, `npm ci --legacy-peer-deps` + `npm run build`, upload `dist/` via `actions/upload-pages-artifact@v3`, deploy via `actions/deploy-pages@v4`. Triggers on push to `main` + manual `workflow_dispatch`. (2) `vite.config.ts` — mode-conditional `base: mode === 'production' ? '/gym-buddy/' : '/'` so dev still serves from `/`, prod emits `/gym-buddy/`-prefixed URLs. (3) `VitePWA` plugin from `vite-plugin-pwa@^1.2.0` — `registerType: 'autoUpdate'`, full manifest (name / short_name / theme_color `#4f46e5` / background `#f8fafc` / `display: standalone` / `orientation: portrait` / `scope` and `start_url` both `/gym-buddy/` / 3 icons), workbox precaches `{js,css,html,svg,png,ico,webmanifest}`. Emits `dist/manifest.webmanifest`, `dist/sw.js`, `dist/workbox-*.js`, `dist/registerSW.js`. (4) `src/main.tsx` — `BrowserRouter` → `HashRouter` so `/gym-buddy/#/today` survives reload without needing a Pages 404 fallback. Three placeholder PNG icons in `public/` (slate-900 bg, white "GB") generated via Python/PIL. `index.html` adds 6 iOS/theme meta tags. One-time manual step: **Settings → Pages → Source → GitHub Actions** in the repo, otherwise first deploy's `deploy` job fails. `--legacy-peer-deps` required everywhere because `vite-plugin-pwa@1.2.0`'s peer range maxes at Vite 7; Vite 8 works with the plugin at runtime but npm's resolver refuses without the flag.
+- **Phase 4d+ (not started)**: History screen, Progress charts.
 
-See `PLAN.md` for the full design doc, `~/.claude/plans/lucky-discovering-biscuit.md` for the Phase 1 plan, `~/.claude/plans/ok-great-lets-start-virtual-harp.md` for the Phase 2 plan, `~/.claude/plans/bright-whistling-kite.md` for the Phase 3 plan, `~/.claude/plans/witty-beaming-lynx.md` for the Phase 4a plan, and `~/.claude/plans/parsed-petting-sparrow.md` for the Phase 4b plan.
+See `PLAN.md` for the full design doc, `~/.claude/plans/lucky-discovering-biscuit.md` for the Phase 1 plan, `~/.claude/plans/ok-great-lets-start-virtual-harp.md` for the Phase 2 plan, `~/.claude/plans/bright-whistling-kite.md` for the Phase 3 plan, `~/.claude/plans/witty-beaming-lynx.md` for the Phase 4a plan, `~/.claude/plans/parsed-petting-sparrow.md` for the Phase 4b plan, and `~/.claude/plans/fluffy-exploring-otter.md` for the Phase 4c plan.
 
 ## Contents
 
@@ -22,7 +23,11 @@ See `PLAN.md` for the full design doc, `~/.claude/plans/lucky-discovering-biscui
 | `.gitignore` | Standard Vite/Node ignores + `.claude/settings.local.json` |
 | `sample-workout.json` | Schema + seed data (settings, 32 exercises, full PPL gym/home routine, empty sessions, state with `inProgressSessionId: null`) — initial seed; live state lives in localStorage after first boot |
 | `public/favicon.svg` | Default Vite favicon |
-| `src/main.tsx` | Vite entry; mounts `<App/>` inside `<BrowserRouter>` |
+| `public/pwa-192x192.png` | 192×192 PWA icon (slate-900 square, white "GB" wordmark). Placeholder — swap in a real design when ready. |
+| `public/pwa-512x512.png` | 512×512 PWA icon, same design. Used as both a regular icon and `purpose: 'any maskable'`. |
+| `public/apple-touch-icon.png` | 180×180 iOS home-screen icon, same design. Referenced by `<link rel="apple-touch-icon">` in `index.html` because iOS Safari doesn't fully honor the web manifest. |
+| `.github/workflows/deploy.yml` | GitHub Actions workflow — builds on Ubuntu with Node 22, deploys `dist/` to GitHub Pages on push to `main` or manual dispatch. Uses GitHub-maintained actions (`checkout@v4`, `setup-node@v4`, `configure-pages@v5`, `upload-pages-artifact@v3`, `deploy-pages@v4`). `npm ci --legacy-peer-deps` — required by the Vite 8 / vite-plugin-pwa peer-range mismatch. |
+| `src/main.tsx` | Vite entry; mounts `<App/>` inside `<HashRouter>` — hash routing picked over `BrowserRouter` so `/#/settings` survives reload on Pages without a 404.html redirect hack. |
 | `src/App.tsx` | Wraps routes in `<SessionProvider>` → `<GistSyncProvider>` → `<RestTimerProvider>`; same four routes + layout shell |
 | `src/index.css` | Tailwind directives + minimal reset |
 | `src/types/workout.ts` | All TS types — Exercise discriminated union, Routine, Session (with `status/startedAt/completedAt`), SessionSet (with `routineEntryIndex/setNumber`), State (with `inProgressSessionId`) |
@@ -46,24 +51,29 @@ See `PLAN.md` for the full design doc, `~/.claude/plans/lucky-discovering-biscui
 | `src/screens/{History,Progress}Screen.tsx` | "Coming soon" stubs |
 | `tailwind.config.js`, `postcss.config.js` | Tailwind v3 config |
 | `tsconfig.app.json` | TS config — `verbatimModuleSyntax: true`, `resolveJsonModule: true`, includes `sample-workout.json` |
-| `vite.config.ts`, `eslint.config.js`, `index.html` | Standard Vite scaffold |
+| `vite.config.ts` | `defineConfig(({ mode }) => ...)` — mode-conditional `base` (`/gym-buddy/` in prod, `/` in dev) + `VitePWA` plugin with full manifest (`start_url`/`scope` both `/gym-buddy/`, display `standalone`, portrait, theme `#4f46e5`, bg `#f8fafc`, 3 icons including maskable) + workbox precache glob. |
+| `index.html` | Vite entry HTML. Includes 6 iOS/theme meta tags (`apple-touch-icon` link, `theme-color`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`, `mobile-web-app-capable`) — required because iOS Safari doesn't fully honor the web manifest. `<link rel="manifest">` + `<script src="registerSW.js">` are auto-injected by `VitePWA`, don't add manually. |
+| `eslint.config.js` | Standard Vite scaffold |
 
 ## Tech stack
 
 - **Vite 8 + React 19 + TypeScript 6** (Vite scaffold defaults — React 19 with strict mode, TS with `verbatimModuleSyntax`)
 - **Tailwind CSS v3** (NOT v4 — v3 was specified to follow the standard PostCSS plugin path; v4 has a different setup)
-- **react-router-dom v7** for nav
-- Node v23 (npm warns about engine mismatch on some devDeps; safe to ignore for now)
+- **react-router-dom v7** via **`HashRouter`** (not `BrowserRouter`) — Pages-compatible without a 404.html redirect
+- **vite-plugin-pwa@^1.2.0** (Workbox wrapper) for manifest + service worker
+- Node v22 on CI (GitHub Actions); local is v23 (npm warns about engine mismatch on some devDeps; safe to ignore for now)
 
 ## Build / run
 
 ```bash
-npm install            # install deps
-npm run dev            # Vite dev server on http://localhost:5173/
-npm run build          # tsc -b && vite build → dist/
-npm run preview        # serve dist/
-npm run lint           # ESLint
+npm install --legacy-peer-deps   # vite-plugin-pwa@1.2.0 peer-range maxes at Vite 7; plain `npm install` fails
+npm run dev                      # Vite dev server on http://localhost:5173/ (base = /, no SW)
+npm run build                    # tsc -b && vite build → dist/ (base = /gym-buddy/, with manifest + sw.js)
+npm run preview                  # serves dist/ on http://localhost:4173/gym-buddy/ — use this to exercise the PWA locally
+npm run lint                     # ESLint
 ```
+
+**Deploy**: push to `main` triggers `.github/workflows/deploy.yml` which publishes to `https://chungdavidt.github.io/gym-buddy/`. **One-time repo setup**: Settings → Pages → Source → **GitHub Actions**. The first deploy's `deploy` job will fail until this is set.
 
 ## Conventions
 

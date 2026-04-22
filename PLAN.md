@@ -26,12 +26,13 @@ A personal workout tracking app for David. Primary device: iPhone (Safari). The 
 
 ## Design principles
 
-1. **Prescriptive, not passive.** The app picks your weights and rep targets. You don't decide.
-2. **User feedback refines predictions.** Per-set adjustment tags (`too heavy` / `too easy` / freeform note) feed back into future prescriptions.
-3. **Gym/Home toggle, not exercise swapping.** Each day has two pre-authored variants. You tap one; exercises just appear.
-4. **Auto-save every set.** If Safari tab dies or your phone crashes mid-workout, you reopen and you're exactly where you left off.
-5. **Big buttons, fast taps.** The workout screen is designed for sweaty fingers with the phone on the gym floor.
-6. **Library over duplication.** Every exercise exists once in a library and is referenced by ID from the routine and session logs.
+1. **Built to be used, not a side project.** This is a daily-driver app David intends to use for years. Every technical decision should be weighed against 5-year maintenance cost: prefer fewer dependencies over more, stable formats over clever ones, boring over novel. A versioned `WorkoutData` schema, backup that survives iOS Safari ITP purges, and a deployment that David can re-deploy two years from now without re-learning the toolchain are all more valuable than any individual feature.
+2. **Prescriptive, not passive.** The app picks your weights and rep targets. You don't decide.
+3. **User feedback refines predictions.** Per-set adjustment tags (`too heavy` / `too easy` / freeform note) feed back into future prescriptions.
+4. **Gym/Home toggle, not exercise swapping.** Each day has two pre-authored variants. You tap one; exercises just appear.
+5. **Auto-save every set.** If Safari tab dies or your phone crashes mid-workout, you reopen and you're exactly where you left off.
+6. **Big buttons, fast taps.** The workout screen is designed for sweaty fingers with the phone on the gym floor.
+7. **Library over duplication.** Every exercise exists once in a library and is referenced by ID from the routine and session logs.
 
 ---
 
@@ -232,3 +233,4 @@ Manual JSON export/import button in Settings for weekly emails-to-self or iCloud
 ## Changelog
 
 - **2026-04-19** — Initial plan drafted. Tech stack, design principles, PPL rotation model, double progression, 4 screens, in-workout UX, data model sketch, backup strategy, deferred items, open questions.
+- **2026-04-22** — Added "Built to be used, not a side project" as design principle #1. Intent: decisions are made for 5-year maintainability, not experimentation.
