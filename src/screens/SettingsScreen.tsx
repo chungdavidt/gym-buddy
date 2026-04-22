@@ -1,8 +1,33 @@
 import { useEffect, useState } from 'react';
 import type { Units } from '../types/workout';
-import { parseWorkoutJSON, useWorkout } from '../state/sessionStore';
+import {
+  parseWorkoutJSON,
+  stripSecrets,
+  useWorkout,
+  withLocalSecrets,
+} from '../state/sessionStore';
+import { useGistSync } from '../hooks/useGistSync';
+import type { GistSyncValue } from '../hooks/useGistSync';
 import { clearWorkout } from '../data/storage';
 import { downloadJSON } from '../utils/download';
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function formatSyncTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function syncStatusText(s: GistSyncValue): string {
+  if (s.status === 'pushing') return 'Pushing to Gist…';
+  if (s.status === 'pulling') return 'Pulling from Gist…';
+  if (s.status === 'error') return `Sync error: ${s.lastError ?? 'Unknown error'}`;
+  if (s.lastSyncedAt) return `Last synced: ${formatSyncTime(s.lastSyncedAt)}.`;
+  return 'Not yet synced.';
+}
 
 const unitOptions: { value: Units; label: string }[] = [
   { value: 'lb', label: 'lb' },
@@ -22,10 +47,14 @@ const INPUT =
 export default function SettingsScreen() {
   const { workout, dispatch } = useWorkout();
   const { settings, sessions, state, version } = workout;
+  const gistSync = useGistSync();
 
   const [importDraft, setImportDraft] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  const isSyncInFlight =
+    gistSync.status === 'pushing' || gistSync.status === 'pulling';
 
   useEffect(() => {
     if (toast === null) return;
@@ -62,7 +91,8 @@ export default function SettingsScreen() {
 
   const handleExport = () => {
     const dateStr = new Date().toISOString().slice(0, 10);
-    downloadJSON(`gym-buddy-${dateStr}.json`, workout);
+    // Strip credentials so a shared/emailed backup file doesn't leak the PAT.
+    downloadJSON(`gym-buddy-${dateStr}.json`, stripSecrets(workout));
     setToast('Exported');
   };
 
@@ -78,9 +108,26 @@ export default function SettingsScreen() {
       ? 'Importing will replace all data, including your in-progress workout. Continue?'
       : 'Importing will replace all existing data. Continue?';
     if (!window.confirm(msg)) return;
-    dispatch({ type: 'IMPORT_WORKOUT', data: result.data });
+    // Exports strip credentials, so imports always carry null token/gistId.
+    // Preserve whatever the user has already typed in the Settings form.
+    const merged = withLocalSecrets(result.data, {
+      gistToken: settings.gistToken,
+      gistId: settings.gistId,
+    });
+    dispatch({ type: 'IMPORT_WORKOUT', data: merged });
     setImportDraft('');
     setToast('Imported');
+  };
+
+  const handlePushNow = () => {
+    void gistSync.pushNow();
+  };
+
+  const handlePullNow = () => {
+    const msg =
+      'Pull will replace all local data with the Gist contents. Continue?';
+    if (!window.confirm(msg)) return;
+    void gistSync.pullNow();
   };
 
   const handleClear = () => {
@@ -174,7 +221,7 @@ export default function SettingsScreen() {
 
       <section className="mt-6">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Cloud backup <span className="text-slate-400">(preview)</span>
+          Cloud backup
         </h2>
         <div className="mt-2 flex flex-col gap-3">
           <label className="flex flex-col text-sm text-slate-700">
@@ -192,6 +239,12 @@ export default function SettingsScreen() {
               autoCapitalize="off"
               spellCheck={false}
             />
+            <span className="mt-1 text-[11px] text-slate-500">
+              Stored in your browser. Use a{' '}
+              <strong className="font-semibold">classic</strong> PAT with only
+              the <code className="font-mono">gist</code> scope (fine-grained
+              PATs don't support the Gists API).
+            </span>
           </label>
           <label className="flex flex-col text-sm text-slate-700">
             <span className="mb-1 text-xs font-medium text-slate-600">
@@ -210,9 +263,31 @@ export default function SettingsScreen() {
             />
           </label>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Sync coming in the next update.
+        <p
+          className={`mt-3 text-xs ${
+            gistSync.status === 'error' ? 'text-red-600' : 'text-slate-500'
+          }`}
+        >
+          {syncStatusText(gistSync)}
         </p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handlePushNow}
+            disabled={!gistSync.enabled || isSyncInFlight}
+            className="h-11 rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-sm active:bg-indigo-700 disabled:bg-slate-300"
+          >
+            Push now
+          </button>
+          <button
+            type="button"
+            onClick={handlePullNow}
+            disabled={!gistSync.canPull || isSyncInFlight}
+            className="h-11 rounded-xl border border-indigo-600 bg-white text-sm font-semibold text-indigo-600 shadow-sm active:bg-indigo-50 disabled:border-slate-300 disabled:text-slate-400"
+          >
+            Pull from Gist
+          </button>
+        </div>
       </section>
 
       <section className="mt-6">

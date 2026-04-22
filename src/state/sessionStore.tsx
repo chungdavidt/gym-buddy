@@ -258,6 +258,40 @@ export function parseWorkoutJSON(raw: string): ParseResult {
   return { ok: true, data: obj as unknown as WorkoutData };
 }
 
+// Produce a copy of WorkoutData with Gist credentials nulled out. The token
+// must never leave localStorage — shipping it inside the Gist body gets it
+// auto-revoked by GitHub's secret scanner; shipping it in a file export is
+// a needless leak if the user ever shares the file.
+// eslint-disable-next-line react-refresh/only-export-components
+export function stripSecrets(workout: WorkoutData): WorkoutData {
+  return {
+    ...workout,
+    settings: {
+      ...workout.settings,
+      gistToken: null,
+      gistId: null,
+    },
+  };
+}
+
+// Merge a freshly-parsed WorkoutData with the local device's Gist credentials
+// (which were stripped before the upload/export). Used on Gist pull + file
+// import so a restore doesn't wipe the local token.
+// eslint-disable-next-line react-refresh/only-export-components
+export function withLocalSecrets(
+  incoming: WorkoutData,
+  local: Pick<Settings, 'gistToken' | 'gistId'>,
+): WorkoutData {
+  return {
+    ...incoming,
+    settings: {
+      ...incoming.settings,
+      gistToken: local.gistToken,
+      gistId: local.gistId,
+    },
+  };
+}
+
 interface ContextValue {
   workout: WorkoutData;
   inProgressSession: Session | null;
