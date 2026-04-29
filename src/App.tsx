@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import BottomNav from './components/BottomNav';
 import TodayScreen from './screens/TodayScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import SessionDetailScreen from './screens/SessionDetailScreen';
 import ProgressScreen from './screens/ProgressScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import { SessionProvider } from './state/sessionStore';
@@ -19,6 +20,7 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/today" replace />} />
                 <Route path="/today" element={<TodayScreen />} />
                 <Route path="/history" element={<HistoryScreen />} />
+                <Route path="/history/:id" element={<SessionDetailScreen />} />
                 <Route path="/progress" element={<ProgressScreen />} />
                 <Route path="/settings" element={<SettingsScreen />} />
               </Routes>
