@@ -46,6 +46,11 @@ export function formatSessionDuration(
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+/** `~` marks it as an estimate, matching the `~155 lb` 1RM label on charts. */
+export function formatCalories(kcal: number): string {
+  return `~${kcal} kcal`;
+}
+
 export function setHitTarget(set: SessionSet): boolean {
   return (
     set.actual.reps >= set.target.reps && set.actual.weight === set.target.weight

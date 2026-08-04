@@ -6,7 +6,8 @@
     "defaultRestSeconds": 120,
     "lastVariant": "gym",
     "gistToken": null,
-    "gistId": null
+    "gistId": null,
+    "bodyWeight": null
   },
 
   "exercises": [

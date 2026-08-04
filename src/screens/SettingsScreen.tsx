@@ -66,6 +66,17 @@ export default function SettingsScreen() {
     dispatch({ type: 'UPDATE_SETTINGS', patch: { units: u } });
   };
 
+  const handleBodyWeight = (raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      dispatch({ type: 'UPDATE_SETTINGS', patch: { bodyWeight: null } });
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    dispatch({ type: 'UPDATE_SETTINGS', patch: { bodyWeight: parsed } });
+  };
+
   const handleRestBump = (delta: number) => {
     const next = Math.min(
       MAX_REST,
@@ -178,6 +189,30 @@ export default function SettingsScreen() {
         </div>
         <p className="mt-2 text-xs text-slate-500">
           Display label only; historical weights are not converted.
+        </p>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Body weight
+        </h2>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="number"
+            inputMode="decimal"
+            min="1"
+            step="any"
+            className={`${INPUT} w-28`}
+            value={settings.bodyWeight ?? ''}
+            onChange={(e) => handleBodyWeight(e.target.value)}
+            placeholder="—"
+            aria-label={`Body weight in ${settings.units}`}
+          />
+          <span className="text-sm text-slate-500">{settings.units}</span>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Used only to estimate calories burned. Lifting estimates are rough —
+          expect ±30–40%. Leave blank to hide the figure.
         </p>
       </section>
 

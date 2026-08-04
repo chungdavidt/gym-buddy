@@ -2,7 +2,12 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import type { CycleDay } from '../types/workout';
 import { useWorkout } from '../state/sessionStore';
-import { formatSessionDate, formatSessionDuration } from '../utils/format';
+import {
+  formatCalories,
+  formatSessionDate,
+  formatSessionDuration,
+} from '../utils/format';
+import { estimateSessionCalories } from '../utils/calories';
 
 const dayLabel: Record<CycleDay, string> = {
   push: 'Push',
@@ -48,6 +53,11 @@ export default function HistoryScreen() {
             const dateText = formatSessionDate(s.completedAt ?? s.date);
             const durationText = formatSessionDuration(s.startedAt, s.completedAt);
             const setCount = s.sets.length;
+            const kcal = estimateSessionCalories(
+              s,
+              workout.settings.bodyWeight,
+              workout.settings.units,
+            );
             return (
               <li key={s.id}>
                 <Link
@@ -67,6 +77,7 @@ export default function HistoryScreen() {
                   </div>
                   <p className="mt-2 text-xs text-slate-500">
                     {setCount} {setCount === 1 ? 'set' : 'sets'} · {durationText}
+                    {kcal !== null && ` · ${formatCalories(kcal)}`}
                   </p>
                 </Link>
               </li>

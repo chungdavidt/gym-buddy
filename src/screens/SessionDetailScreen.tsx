@@ -3,10 +3,12 @@ import { Link, useParams } from 'react-router-dom';
 import type { CycleDay, Exercise, SessionSet } from '../types/workout';
 import { useWorkout } from '../state/sessionStore';
 import {
+  formatCalories,
   formatSessionDate,
   formatSessionDuration,
   setHitTarget,
 } from '../utils/format';
+import { estimateSessionCalories } from '../utils/calories';
 
 const dayLabel: Record<CycleDay, string> = {
   push: 'Push',
@@ -68,6 +70,11 @@ export default function SessionDetailScreen() {
   const dateText = formatSessionDate(session.completedAt ?? session.date);
   const durationText = formatSessionDuration(session.startedAt, session.completedAt);
   const units = workout.settings.units;
+  const kcal = estimateSessionCalories(
+    session,
+    workout.settings.bodyWeight,
+    units,
+  );
 
   return (
     <div className="mx-auto max-w-md px-4 pt-6">
@@ -85,7 +92,10 @@ export default function SessionDetailScreen() {
           <span className="text-sm text-slate-600">
             {session.variant === 'gym' ? 'Gym' : 'Home'}
           </span>
-          <span className="ml-auto text-xs text-slate-500">{durationText}</span>
+          <span className="ml-auto text-xs text-slate-500">
+            {durationText}
+            {kcal !== null && ` · ${formatCalories(kcal)}`}
+          </span>
         </div>
       </header>
 

@@ -45,6 +45,13 @@ export interface Settings {
   lastVariant: Variant;
   gistToken: string | null;
   gistId: string | null;
+  /**
+   * Body weight in `units`, unconverted (same convention as every other stored
+   * weight — see `units` being a display label only). Used solely by the
+   * calorie estimate. Optional because pre-Phase-5 localStorage blobs and Gist
+   * backups lack the key entirely; the schema version deliberately stays at 1.
+   */
+  bodyWeight?: number | null;
 }
 
 export type SessionStatus = 'in-progress' | 'complete';
